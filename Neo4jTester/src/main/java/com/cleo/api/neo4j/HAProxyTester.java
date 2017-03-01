@@ -28,30 +28,56 @@ public class HAProxyTester {
     return new SessionFactory(configuration, "com.cleo.api.neo4j.pojo");
   }
   
-  private void cleanup(Session session) {
+  private void cleanup() {
     System.out.println("Deleting all nodes...");
-    session.query("MATCH (n) DETACH DELETE n", Maps.newHashMap());
+    SESSIONS.get().openSession().query("MATCH (n) DETACH DELETE n", Maps.newHashMap());
   }
   
-  private void write(Session session) {
+  private void write() {
     System.out.println(String.format("Writing %s nodes...", NODES));
+    
+    int failures = 0;
     for(int i = 0; i < NODES; ++i) {
-      session.save(
-          NeoEntity.newEntity(Person.class)
-              .setIndex(i)
-              .setName(Utils.generateName())
-      );
+      try {
+        SESSIONS.get().openSession().save(
+            NeoEntity.newEntity(Person.class)
+                .setIndex(i)
+                .setName(Utils.generateName())
+        );
+      } catch(Exception ex) {
+        if(failures >= 4) {
+          throw ex;
+        }
+        
+        ++failures;
+        --i;
+        
+        System.out.println(String.format("Failure #%s at index %s. Trying again...", failures, i));
+      }
     }
   }
   
-  private void read(Session session) {
+  private void read() {
     System.out.println(String.format("Reading %s nodes...", NODES));
     
     long start = System.currentTimeMillis();
     
     List<Person> read = Lists.newArrayList();
+    
+    int failures = 0;
     for(int i = 0; i < NODES; ++i) {
-      read.addAll(session.loadAll(Person.class, new Filter("index", i)));
+      try {
+        read.addAll(SESSIONS.get().openSession().loadAll(Person.class, new Filter("index", i)));
+      } catch(Exception ex) {
+        if(failures >= 4) {
+          throw ex;
+        }
+        
+        ++failures;
+        --i;
+        
+        System.out.println(String.format("Failure #%s at index %s. Trying again...", failures, i));
+      }
     }
 
     System.out.println(String.format("Read %s nodes in %s ms.", read.size(), System.currentTimeMillis() - start));
@@ -59,11 +85,9 @@ public class HAProxyTester {
   
   private void run() {
     try {
-      Session session = SESSIONS.get().openSession();
-      
-      cleanup(session);
-      write(session);
-      read(session);
+      cleanup();
+      write();
+      read();
     } catch(Exception ex) {
       ex.printStackTrace(System.out);
     } finally {

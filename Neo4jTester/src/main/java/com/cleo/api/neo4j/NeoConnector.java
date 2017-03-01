@@ -11,7 +11,7 @@ import org.neo4j.driver.v1.Session;
 
 public class NeoConnector {
   
-  private static final Long NODES = 1000L;
+  private static final Long NODES = 10000L;
 
   private static final String URI = "bolt://10.10.30.225:7687";
   private static final String USERNAME = "neo4j";
