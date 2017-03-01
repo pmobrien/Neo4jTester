@@ -1,4 +1,4 @@
-package com.cleo.api.neo4j.minimal;
+package com.cleo.api.neo4j;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
@@ -13,7 +13,7 @@ public class NeoConnector {
   
   private static final Long NODES = 1000L;
 
-  private static final String URI = "http://localhost:80";
+  private static final String URI = "bolt://10.10.30.225:7687";
   private static final String USERNAME = "neo4j";
   private static final String PASSWORD = "cleo";
   

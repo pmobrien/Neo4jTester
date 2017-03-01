@@ -1,4 +1,4 @@
-package com.cleo.api.neo4j.minimal;
+package com.cleo.api.neo4j;
 
 import java.util.function.Consumer;
 import org.neo4j.driver.v1.Session;

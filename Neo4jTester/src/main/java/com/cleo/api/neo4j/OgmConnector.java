@@ -1,4 +1,4 @@
-package com.cleo.api.neo4j.minimal;
+package com.cleo.api.neo4j;
 
 import com.cleo.api.neo4j.pojo.Person;
 import com.google.common.collect.Maps;

@@ -1,4 +1,4 @@
-package com.cleo.api.neo4j.minimal;
+package com.cleo.api.neo4j;
 
 import org.neo4j.driver.v1.*;
 import java.sql.Timestamp;

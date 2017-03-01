@@ -1,4 +1,4 @@
-package com.cleo.api.neo4j.minimal;
+package com.cleo.api.neo4j;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

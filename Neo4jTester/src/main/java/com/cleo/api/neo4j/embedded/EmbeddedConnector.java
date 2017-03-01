@@ -1,6 +1,6 @@
 package com.cleo.api.neo4j.embedded;
 
-import com.cleo.api.neo4j.minimal.Utils;
+import com.cleo.api.neo4j.Utils;
 import com.cleo.api.neo4j.pojo.NeoEntity;
 import com.cleo.api.neo4j.pojo.Person;
 import java.nio.file.Path;
