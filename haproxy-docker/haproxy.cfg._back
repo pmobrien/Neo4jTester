@@ -1,0 +1,60 @@
+global
+   log 127.0.0.1 local0
+   log 127.0.0.1 local1 notice
+   chroot /var/lib/haproxy
+   stats socket /run/haproxy/admin.sock mode 660 level admin
+   stats timeout 30s
+   daemon
+   maxconn 256
+defaults
+    log global
+    mode tcp
+    option tcplog
+    option dontlognull
+    timeout connect 30s
+    timeout client 2h
+    timeout server 2h
+frontend http-in
+    bind *:81
+    acl write_method method POST DELETE PUT
+    acl write_hdr hdr_val(X-Write) eq 1
+    acl write_payload payload(0,0) -m reg -i CREATE|MERGE|SET|DELETE|REMOVE
+    acl tx_cypher_endpoint path_beg /db/data/transaction
+    http-request set-var(txn.tx_cypher_endpoint) bool(true) if tx_cypher_endpoint
+    use_backend neo4j-master if write_hdr
+    use_backend neo4j-master if tx_cypher_endpoint write_payload
+    use_backend neo4j-all if tx_cypher_endpoint
+    use_backend neo4j-master if write_method
+    default_backend neo4j-all
+frontend http-browse
+    bind *:83
+    mode http
+    default_backend neo4j-browser
+backend neo4j-all
+    option httpchk GET /db/manage/server/ha/available HTTP/1.0\r\nAuthorization:\ Basic\ bmVvNGo6IGNsZW8=
+    acl tx_cypher_endpoint var(txn.tx_cypher_endpoint),bool
+    stick-table type integer size 1k expire 70s  
+    stick match path,word(4,/) if tx_cypher_endpoint
+    stick store-response hdr(Location),word(6,/) if tx_cypher_endpoint
+    server neo4j-1 10.10.30.225:7687 check port 7474
+    server neo4j-2 10.10.30.215:7687 check port 7474
+    server neo4j-3 10.10.30.216:7687 check port 7474
+backend neo4j-master
+    option httpchk GET /db/manage/server/ha/master HTTP/1.0\r\nAuthorization:\ Basic\ bmVvNGo6IGNsZW8=
+    server neo4j-1 10.10.30.225:7687 check port 7474
+    server neo4j-2 10.10.30.215:7687 check port 7474
+    server neo4j-3 10.10.30.216:7687 check port 7474
+backend neo4j-browser
+    mode http
+    option prefer-last-server
+    option httpchk GET /db/manage/server/ha/master HTTP/1.0\r\nAuthorization:\ Basic\ bmVvNGo6IGNsZW8=
+    server neo4j-1 10.10.30.225:7474 check
+    server neo4j-2 10.10.30.215:7474 check
+    server neo4j-3 10.10.30.216:7474 check
+listen admin
+    bind *:82
+    mode http
+    stats enable
+    stats uri /haproxy?stats
+    stats realm Haproxy\ Statistics
+    stats auth admin:admin
