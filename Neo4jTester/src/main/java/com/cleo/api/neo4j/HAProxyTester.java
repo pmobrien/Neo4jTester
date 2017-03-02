@@ -9,12 +9,11 @@ import com.google.common.collect.Maps;
 import java.util.List;
 import org.neo4j.ogm.config.Configuration;
 import org.neo4j.ogm.cypher.Filter;
-import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 
 public class HAProxyTester {
 
-  private static final int NODES = 500;
+  private static final int NODES = 1000;
   
   private static final Supplier<SessionFactory> SESSIONS = Suppliers.memoize(() -> initializeSessionFactory());
   
@@ -36,6 +35,8 @@ public class HAProxyTester {
   private void write() {
     System.out.println(String.format("Writing %s nodes...", NODES));
     
+    int checkpoint = NODES / 5;
+    
     int failures = 0;
     for(int i = 0; i < NODES; ++i) {
       try {
@@ -44,6 +45,10 @@ public class HAProxyTester {
                 .setIndex(i)
                 .setName(Utils.generateName())
         );
+        
+        if(i > 0 && i % checkpoint == 0) {
+          System.out.println(String.format("    %s nodes written...", i));
+        }
       } catch(Exception ex) {
         if(failures >= 4) {
           throw ex;
@@ -52,7 +57,7 @@ public class HAProxyTester {
         ++failures;
         --i;
         
-        System.out.println(String.format("Failure #%s at index %s. Trying again...", failures, i));
+        System.out.println(String.format("    Failure #%s at index %s. Trying again...", failures, i));
       }
     }
   }
@@ -69,6 +74,37 @@ public class HAProxyTester {
       try {
         read.addAll(SESSIONS.get().openSession().loadAll(Person.class, new Filter("index", i)));
       } catch(Exception ex) {
+        if(failures >= 10) {
+          throw ex;
+        }
+        
+        ++failures;
+        --i;
+        
+        System.out.println(String.format("    Failure #%s at index %s. Trying again...", failures, i));
+      }
+    }
+
+    System.out.println(String.format("Read %s nodes in %s ms.", read.size(), System.currentTimeMillis() - start));
+  }
+  
+  private void update() {
+    System.out.println(String.format("Updating %s nodes...", NODES / 2));
+    
+    long start = System.currentTimeMillis();
+    
+    int failures = 0;
+    for(int i = 0; i < NODES; ++i) {
+      try {
+        Person person = SESSIONS.get().openSession().loadAll(Person.class, new Filter("index", i))
+            .stream()
+            .findFirst()
+            .orElse(null);
+        
+        if(person != null && person.getIndex() % 2 == 0) {
+          SESSIONS.get().openSession().save(person.setName("Updated Person"));
+        }
+      } catch(Exception ex) {
         if(failures >= 4) {
           throw ex;
         }
@@ -76,11 +112,54 @@ public class HAProxyTester {
         ++failures;
         --i;
         
-        System.out.println(String.format("Failure #%s at index %s. Trying again...", failures, i));
+        System.out.println(String.format("    Failure #%s at index %s. Trying again...", failures, i));
       }
     }
 
-    System.out.println(String.format("Read %s nodes in %s ms.", read.size(), System.currentTimeMillis() - start));
+    System.out.println(
+        String.format(
+            "Updated %s nodes in %s ms.",
+            NODES - SESSIONS.get().openSession().loadAll(Person.class, new Filter("name", "Updated Person")).size(),
+            System.currentTimeMillis() - start
+        )
+    );
+  }
+  
+  private void delete() {
+    System.out.println(String.format("Deleting %s nodes...", NODES / 2));
+    
+    long start = System.currentTimeMillis();
+    
+    int failures = 0;
+    for(int i = 0; i < NODES; ++i) {
+      try {
+        Person person = SESSIONS.get().openSession().loadAll(Person.class, new Filter("index", i))
+            .stream()
+            .findFirst()
+            .orElse(null);
+        
+        if(person != null && person.getIndex() % 2 == 0) {
+          SESSIONS.get().openSession().delete(person);
+        }
+      } catch(Exception ex) {
+        if(failures >= 4) {
+          throw ex;
+        }
+        
+        ++failures;
+        --i;
+        
+        System.out.println(String.format("    Failure #%s at index %s. Trying again...", failures, i));
+      }
+    }
+
+    System.out.println(
+        String.format(
+            "Deleted %s nodes in %s ms.",
+            NODES - SESSIONS.get().openSession().loadAll(Person.class).size(),
+            System.currentTimeMillis() - start
+        )
+    );
   }
   
   private void run() {
@@ -88,6 +167,8 @@ public class HAProxyTester {
       cleanup();
       write();
       read();
+//      update();
+//      delete();
     } catch(Exception ex) {
       ex.printStackTrace(System.out);
     } finally {
