@@ -1,0 +1,20 @@
+- 3 nodes
+  - Taking down the master during reads works, but it does need a second to re-elect a master, and reads can fail during that time. Was able to get around this by catching that exception that gets thrown and retrying the read.
+  - With "pull" synchronization, taking down the master during the write loop can actually cause writes to be lost. In the test I ran, 19 out of 500 nodes were lost from the write loop (5 second pull interval).
+  - With "push" synchronization, all 500 writes were successful, even when taking the master down in the middle of the write loop.
+  - No issues with deletes.
+  - No issues with updates.
+  - Taking the cluster down to one node during a write loop the cluster seemed to recover, but somehow ended back getting 501 nodes written. Maybe something to look into here?
+  - Taking the cluster down to one node during the read loop had no issues.
+- 2 nodes
+  - When taking the slave down during both read and write loops and bringing it back up at different times, it was always able to recover as expected. This was done in the first round of testing.
+  - No issues bringing the master down during read loop. All 1000 nodes were read.
+  - Taking the master down during the write loop gave us 1 extra node after the master was re-elected. The master synced back in successfully after being brought back up.
+
+
+Potential Solution?
+  Each VL wraps a Neo4j client. The client will keep a master cached and will always write to that node. If it ever gets back a 503 because that node has gone down, it finds the new master and caches that. It would also need to fire out an event to all the other nodes to let them know to re-cache their master as well (Do we need to periodically check if the master has changed as well?).
+  We set the push factor to (n - 1), where n is the number of VL nodes. This should guarantee that we can always read from our local node. Setting the push factor greater than 1 will be a performance hit, so we will need to determine the trade-offs and decide if that is worth it.
+  
+Or...
+  Is always writing to the master strictly a performance thing? We should find this out, since if we can just write locally it could significantly reduce the complexity of the infrastructure we end up having to build around Neo4j.
