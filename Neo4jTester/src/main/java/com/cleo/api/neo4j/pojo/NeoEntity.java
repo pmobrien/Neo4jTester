@@ -1,6 +1,6 @@
 package com.cleo.api.neo4j.pojo;
 
-import com.cleo.api.neo4j.embedded.UUIDConverter;
+import com.cleo.api.neo4j.pojo.converters.UUIDConverter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;

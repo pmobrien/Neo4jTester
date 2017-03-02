@@ -1,4 +1,4 @@
-package com.cleo.api.neo4j.embedded;
+package com.cleo.api.neo4j.pojo.converters;
 
 import java.util.UUID;
 import org.neo4j.ogm.typeconversion.AttributeConverter;
