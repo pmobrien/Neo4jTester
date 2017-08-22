@@ -9,6 +9,7 @@ import com.google.common.collect.Maps;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.neo4j.ogm.config.Configuration;
+import org.neo4j.ogm.drivers.embedded.driver.EmbeddedDriver;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 
@@ -29,7 +30,7 @@ public class EmbeddedConnector {
     
     configuration.driverConfiguration()
         .setURI(NEO_STORE_PATH.get().toUri().toString())
-        .setDriverClassName("org.neo4j.ogm.drivers.embedded.driver.EmbeddedDriver");
+        .setDriverClassName(EmbeddedDriver.class.getName());
 
     return new SessionFactory(configuration, "com.cleo.api.neo4j.pojo");
   }

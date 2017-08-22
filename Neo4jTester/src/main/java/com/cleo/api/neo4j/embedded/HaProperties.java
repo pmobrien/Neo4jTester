@@ -13,23 +13,25 @@ import java.nio.file.Paths;
 public class HaProperties {
 
   private static final String NEO_HA_PROPERTIES = "neo4j-ha.properties";
-  private static final Supplier<Path> PATH = Suppliers.memoize(() -> initializeHaProperties());
+  private static final Supplier<Path> PATH = Suppliers.memoize(() -> initializePath());
   
   public static Path getPath() {
     return PATH.get();
   }
   
-  private static Path initializeHaProperties() {
+  private static Path initializePath() {
     Path path = Paths.get(EmbeddedConnector.NEO_STORE_PATH.get().toString(), NEO_HA_PROPERTIES);
     
     try {
       path.toFile().createNewFile();
-
+      
       try(PrintWriter writer = new PrintWriter(path.toFile())) {
         writer.write(
             new StringBuilder()
                 .append("ha.server_id=").append(getServerId()).append(System.lineSeparator())
                 .append("ha.initial_hosts=").append(getInitialHosts()).append(System.lineSeparator())
+                .append("ha.pull_interval=").append(5).append(System.lineSeparator())
+                .append("ha.tx_push_factor=").append(1).append(System.lineSeparator())
                 .append("ha.allow_init_cluster=").append(getAllowInitCluster()).append(System.lineSeparator())
                 .toString()
         );
@@ -51,7 +53,11 @@ public class HaProperties {
   }
   
   private static int getServerId() {
-    return 1;
+    String serverId = System.getProperty("server_id");
+    
+    return serverId == null
+        ? 1
+        : Integer.parseInt(serverId);
   }
 
   private static String getInitialHosts() {
